@@ -4,6 +4,8 @@ A semantic drift detection system for Fortune 500 10-K risk factor disclosures. 
 
 Built with Python, Sentence Transformers, FAISS, Gemini API, SEC EDGAR API, and Streamlit.
 
+Live demo: https://sec-risk-drift-gysyvkrtskzd82ohvhf82q.streamlit.app
+
 ---
 
 ## What it does
