@@ -46,12 +46,14 @@ except ImportError:
     print("[WARN] faiss-cpu not installed. Falling back to numpy cosine similarity.")
 
 try:
-    import google.generativeai as genai
+    from google import genai
     GEMINI_AVAILABLE = True
 except ImportError:
     GEMINI_AVAILABLE = False
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# gemini-1.5-flash has been shut down by Google; override with the GEMINI_MODEL env var if needed.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 
 # ── Constants ────────────────────────────────────────────────────────────────
 CACHE_DIR        = Path("sec_cache")
@@ -463,8 +465,7 @@ def summarize_with_gemini(new_signals: list[dict], company: str) -> str:
     if not GEMINI_AVAILABLE or not GEMINI_API_KEY:
         return "_Gemini API key not configured. Set the `GEMINI_API_KEY` environment variable to enable AI summaries._"
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     snippets = "\n\n".join(
         [f"[{s['risk_category']}] {s['paragraph'][:300]}" for s in new_signals[:6]]
@@ -487,7 +488,7 @@ Tasks:
 Keep your response concise and analyst-grade. No preamble.
 """
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
         return response.text
     except Exception as e:
         return f"_Gemini API error: {e}_"
@@ -498,8 +499,7 @@ def classify_signals_with_gemini(signals: list[dict], company: str) -> list[dict
     if not GEMINI_AVAILABLE or not GEMINI_API_KEY or not signals:
         return signals
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     # Only reclassify signals that fall into "General"
     general_indices = [i for i, s in enumerate(signals) if s.get("risk_category") == "General"]
@@ -517,7 +517,7 @@ Paragraph: {para}
 Reply with ONLY the category name, nothing else.
 """
         try:
-            resp = model.generate_content(prompt)
+            resp = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
             cat  = resp.text.strip()
             if cat in RISK_KEYWORDS or cat == "General":
                 signals[i]["risk_category"] = cat
